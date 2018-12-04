@@ -60,6 +60,3 @@ class NeuroSAT(object):
         self.logits   = scores[:, 0]
         self.v_scores = scores[:, 1]
         self.v        = tf.reduce_mean(self.v_scores, axis=0)
-
-        if cfg['squash_v']:
-            self.v = tf.nn.sigmoid(self.v) * cfg['v_reward']

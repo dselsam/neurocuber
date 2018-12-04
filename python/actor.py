@@ -78,7 +78,7 @@ class Actor:
 
     def _compute_v(self, n_steps_left):
         steps = n_steps_left / self.cfg['v_reward_decay_steps']
-        return self.cfg['v_reward'] * math.pow(self.cfg['v_reward_decay'], steps)
+        return - self.cfg['v_reward_scale'] * (math.pow(self.cfg['v_reward_base'], steps) - 1)
 
 if __name__ == "__main__":
     import argparse

@@ -35,10 +35,10 @@ class Actor:
 
     def loop(self):
         while True:
-            for (dimacs, sp) in self.sps:
-                for brancher in self.branchers:
-                    for cuber in self.cubers:
-                        self.play_episode(dimacs, sp, cuber, brancher)
+            (dimacs, sp) = random.choice(self.sps)
+            cuber        = random.choice(self.cubers)
+            brancher     = random.choice(self.branchers)
+            self.play_episode(dimacs, sp, cuber, brancher)
 
     def play_episode(self, dimacs, sp, cuber, brancher):
         self.neuroquery.set_weights(self.server.get_weights())

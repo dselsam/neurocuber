@@ -81,8 +81,8 @@ class Learner:
 
         self.summary = tf.summary.merge_all()
 
-    def save_checkpoint(self):
-        self.saver.save(self.sess, os.path.join(self.cfg['checkpoint_dir'], "checkpoint"), global_step=self.global_step)
+    def save_checkpoint(self, iteration):
+        self.saver.save(self.sess, os.path.join(self.cfg['checkpoint_dir'], "checkpoint"), global_step=iteration)
 
     def _extract_weights(self):
         names = [tvar.name for tvar in self.tvars]
@@ -102,4 +102,4 @@ class Learner:
             self.weights = self._extract_weights()
 
         if iteration % self.cfg['checkpoint_freq'] == 0:
-            self.save_checkpoint()
+            self.save_checkpoint(iteration)

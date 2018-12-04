@@ -58,3 +58,11 @@ We seek to train NeuroCuber to make better cubing decisions than SOTA cubers. In
 2. Lookahead: perform lookahead search with respect to the current weights, and then train NeuroCuber to predict the actions that end up seeming the most promising.
 
 3. Post-facto analysis: (importance) sample a path through the cube tree, do greedy search to minimize the resulting unsat core, and then train NeuroCuber to predict this reduced sequence of cubes.
+
+## Team
+
+* [Daniel Selsam](https://web.stanford.edu/~dselsam/), Stanford University
+* [Nikolaj Bjorner](https://www.microsoft.com/en-us/research/people/nbjorner/), Microsoft Research
+* [Percy Liang](https://cs.stanford.edu/~pliang/), Stanford University
+* [David L. Dill](http://verify.stanford.edu/dill), Stanford University
+* [Marijn Heule](http://www.cs.utexas.edu/~marijn/), University of Texas at Austin

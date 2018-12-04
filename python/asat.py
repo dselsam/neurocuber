@@ -95,10 +95,10 @@ class NeuroBrancher:
         tfqs = [s.to_tf_query(assumptions=assumptions + [lit]) for lit in lit_choices]
         if len(tfqs[0].fvars) == 0:
             # TODO(dselsam): look-ahead here
-            return lit_choices[1]
+            return lit_choices[1], 1.0
         elif len(tfqs[1].fvars) == 0:
             # TODO(dselsam): look-ahead here
-            return lit_choices[0]
+            return lit_choices[0], 1.0
         else:
             adversary_vs = -np.array([self.neuroquery.query(s.sp().n_vars(), s.sp().n_clauses(), tfq.LC_idxs)['v'] for tfq in tfqs])
             assert(np.size(adversary_vs) == 2)

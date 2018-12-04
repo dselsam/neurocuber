@@ -10,8 +10,7 @@ from sat_util import *
 from asat import play_asat, mk_cuber, mk_brancher
 from collections import namedtuple
 
-ActorEpisodeResult = namedtuple('ActorEpisodeResult',
-                                ['dimacs', 'cuber', 'brancher', 'n_steps', 'n_core', 'datapoints', 'n_secs_play', 'n_secs_data'])
+ActorEpisodeResult = namedtuple('ActorEpisodeResult', ['dimacs', 'cuber', 'brancher', 'estimate', 'datapoints'])
 
 class Actor:
     def __init__(self, server, gpu_id, gpu_frac, actor_info):
@@ -43,14 +42,10 @@ class Actor:
 
     def play_episode(self, dimacs, sp, cuber, brancher):
         self.neuroquery.set_weights(self.server.get_weights())
-
-        start_play  = time.time()
         ssat_result = play_asat(self._fresh_solver(sp), cuber, brancher)
-        end_play    = time.time()
-
         if ssat_result is None: return None
 
-        trail, core = ssat_result
+        trail, core, estimate = ssat_result
 
         datapoints = []
         if self.train:
@@ -73,12 +68,8 @@ class Actor:
                     dimacs=dimacs,
                     cuber=cuber.name,
                     brancher=brancher.name,
-                    n_steps=len(trail),
-                    n_core=len(core),
-                    datapoints=datapoints,
-                    n_secs_play=end_play - start_play,
-                    n_secs_data=time.time() - end_play
-                )
+                    estimate=estimate,
+                    datapoints=datapoints)
             )
         )
 
@@ -95,9 +86,11 @@ if __name__ == "__main__":
     parser.add_argument('--actor_config', action='store', dest='actor_config', type=str, default="configs/actor/main.json")
     parser.add_argument('--uri', action='store', dest='uri', type=str, default=None)
     opts = parser.parse_args()
+    print("Options:", opts)
 
     import json
     with open(opts.actor_config) as f: actor_cfg = json.load(f)
+    print("ActorConfig:", actor_cfg)
 
     import Pyro4
 

@@ -5,6 +5,11 @@ from util import npsoftmax
 from sat_util import *
 
 def play_asat(s, cuber, brancher):
+    # Knuth's notation
+    # See https://pdfs.semanticscholar.org/94ce/5bdf77af8693df0d525010850ab6faf7e290.pdf
+    D     = 1
+    C     = 1
+
     trail = []
 
     while True:
@@ -15,14 +20,18 @@ def play_asat(s, cuber, brancher):
         elif status == Z3Status.unsat:
             core = s.unsat_core()
             assert(len(core) <= len(trail))
-            return trail, core
+            return trail, core, C
 
         var = cuber.cube(s, assumptions=trail)
         if var is None:
             print("[%s|%s] FAILED(%s)" % (cuber.name, brancher.name, len(trail)))
             return None
         lit_choices = [Lit(var, False), Lit(var, True)]
-        lit = brancher.branch(s, assumptions=trail, lit_choices=lit_choices)
+        lit, plit = brancher.branch(s, assumptions=trail, lit_choices=lit_choices)
+
+        D = D / plit
+        C = C + D
+
         trail.append(lit)
 
 # Cubers
@@ -74,7 +83,7 @@ class RandomBrancher:
         self.name = name
 
     def branch(self, s, assumptions, lit_choices):
-        return random.choice(lit_choices)
+        return random.choice(lit_choices), 1 / len(lit_choices)
 
 class NeuroBrancher:
     def __init__(self, name, tau, neuroquery):
@@ -96,7 +105,7 @@ class NeuroBrancher:
             adversary_ps     = npsoftmax(adversary_vs * self.tau)
             adversary_choice = np.random.choice(2, 1, p=adversary_ps)[0]
         assert(adversary_choice in [0, 1])
-        return lit_choices[adversary_choice]
+        return lit_choices[adversary_choice], adversary_ps[adversary_choice]
 
 ## Makers
 

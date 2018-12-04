@@ -39,7 +39,7 @@ class TensorBoardWriter:
         if aer.datapoints:
             value.append(tf.Summary.Value(tag="profile/n_secs_data_vs_%s" % aer.brancher, simple_value=aer.n_secs_data))
 
-        self.writers[aer.cuber].add_summary(tf.Summary(value=value, global_step=self.actor_iterations[(aer.cuber, aer.brancher)])
+        self.writers[aer.cuber].add_summary(tf.Summary(value=value, global_step=self.actor_iterations[(aer.cuber, aer.brancher)]))
 
     def log_learner_episode(self, iteration, summary, n_secs):
         self.writers['learn'].add_summary(summary, global_step=iteration)

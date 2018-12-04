@@ -68,8 +68,8 @@ def get_options():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('experiment', action='store', type=str)
-    parser.add_argument('config', action='store', type=str)
-    parser.add_argument('root_dir', action='store', type=str)
+    parser.add_argument('--config', action='store', dest='config', type=str, default='config/learn.json')
+    parser.add_argument('--root_dir', action='store', dest='root_dir', type=str, default='.')
     parser.add_argument('--host', action='store', dest='host', type=str, default="0.0.0.0")
     parser.add_argument('--port', action='store', dest='port', type=int, default=9091)
     return parser.parse_args()

@@ -83,8 +83,8 @@ class Actor:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--actor_config', action='store', dest='actor_config', type=str, default="configs/actor/main.json")
-    parser.add_argument('--uri', action='store', dest='uri', type=str, default=None)
+    parser.add_argument('--actor_config', action='store', dest='actor_config', type=str, default="config/actor.json")
+    parser.add_argument('--uri', action='store', dest='uri', type=str, default='PYRO:neurocuber_server@0.0.0.0:9091')
     opts = parser.parse_args()
     print("Options:", opts)
 

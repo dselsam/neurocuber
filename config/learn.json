@@ -1,0 +1,52 @@
+{
+    "seed":0,
+    "prefetch":4,
+    "checkpoint_freq":10000,
+    "max_saves_to_keep":10,
+    "replay_buffer_size":8000,
+    "update_weights_freq":100,
+
+    "n_rounds": 4,
+    "repeat_layers":false,
+    "weight_reparam":true,
+    "batch_norm":true,
+    "res_layers":true,
+
+    "dropout_rate":0.0,
+    "dropout_training":false,
+
+    "learning_rate" : {
+	"kind" : "poly",
+	"start": 1e-4,
+	"end": 1e-6,
+	"decay_steps": 1e7,
+	"power" : 1.0
+    },
+
+    "clip_val": 1e1,
+
+    "p_cost_scale" : 1.0,
+    "v_cost_scale" : 5.0,
+    "l2_cost_scale": 1e-8,
+
+    "n_update_layers": 2,
+    "n_score_layers": 4,
+
+    "d_clause": 64,
+    "d_lit": 64,
+
+    "LC_scale": 0.50,
+    "CL_scale": 0.05,
+
+    "mlp_transfer_fn": "relu",
+    "mlp_update_nl_at_end":false,
+
+    "v_reward_decay_steps":2,
+    "v_reward_decay":0.7,
+    "v_reward":5.0,
+
+    "squash_v":true,
+    "summarize_vectors":false,
+
+    "restore_path":"none"
+}

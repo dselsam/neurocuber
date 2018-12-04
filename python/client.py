@@ -83,14 +83,14 @@ class Actor:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--actor_config', action='store', dest='actor_config', type=str, default="config/actor.json")
+    parser.add_argument('--config', action='store', dest='config', type=str, default="config/client.json")
     parser.add_argument('--uri', action='store', dest='uri', type=str, default='PYRO:neurocuber_server@0.0.0.0:9091')
     opts = parser.parse_args()
     print("Options:", opts)
 
     import json
-    with open(opts.actor_config) as f: actor_cfg = json.load(f)
-    print("ActorConfig:", actor_cfg)
+    with open(opts.config) as f: client_cfg = json.load(f)
+    print("Client config:", client_cfg)
 
     import Pyro4
 
@@ -104,16 +104,16 @@ if __name__ == "__main__":
         # TODO(dselsam): probably need to help it find the NS
         if opts.uri is None:
             with Pyro4.locateNS() as ns:
-                return Pyro4.Proxy(ns.locate(actor_cfg['server_name']))
+                return Pyro4.Proxy(ns.locate(client_cfg['server_name']))
         else:
             return Pyro4.Proxy(opts.uri)
 
-    n_actors_total = sum([actor['n'] for actor in actor_cfg['actors']])
-    gpu_frac = actor_cfg['gpu_frac'] * actor_cfg['n_gpus'] / n_actors_total
+    n_actors_total = sum([actor['n'] for actor in client_cfg['actors']])
+    gpu_frac = client_cfg['gpu_frac'] * client_cfg['n_gpus'] / n_actors_total
 
     def get_actor_info(idx):
         i = 0
-        for actor_info in actor_cfg['actors']:
+        for actor_info in client_cfg['actors']:
             i += actor_info['n']
             if idx < i:
                 return actor_info
@@ -121,10 +121,9 @@ if __name__ == "__main__":
 
     def launch_actor(actor_idx):
         server = construct_proxy_server()
-        gpu_id = actor_idx % actor_cfg['n_gpus'] if actor_cfg['n_gpus'] > 0 else 0
+        gpu_id = actor_idx % client_cfg['n_gpus'] if client_cfg['n_gpus'] > 0 else 0
         actor  = Actor(server, gpu_id, gpu_frac, get_actor_info(actor_idx))
         actor.loop()
-
 
     import multiprocessing
     actors = []

@@ -1,7 +1,7 @@
 import sqlite3
 import subprocess
 import math
-from actor import ActorEpisodeResult
+from client import ActorEpisodeResult
 import os
 import tensorflow as tf
 import numpy as np

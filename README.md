@@ -36,3 +36,15 @@ We consider three different regimes of train and test problems (in decreasing or
 2. Find a distribution of similar SAT problems, train on some of them and test on the rest. In this regime, we need to be careful that the cost of training can be amortized, i.e. that there are enough challenging test problems left that it is worth the cost of training.
 
 3. Find one SAT problem that is so challenging that the cost of training from scratch can be amortized, and then train and test on it. One candidate is the [Schur Number Five problem](https://arxiv.org/abs/1711.08076), which takes rough 14 CPU years to solve using SOTA.
+
+## Tour of repository
+
+1. The `sat_util` directory consists of a [pybind11](https://github.com/pybind/pybind11.git) module that wraps z3. It provides a `SATProblem` abstraction that hides many technical details of z3 and enforces various forms of consistency (e.g. clause ordering). It also provides a utility for converting the current state of the z3 solver into a collection of tensors suitable for passing to NeuroCuber.
+
+2. The `python` directory consists of the rest of code. It includes:
+
+* `neurosat.py`: an implementation of NeuroSAT,
+* `server.py`: a server that collects training data from clients into a replay buffer and continuously optimizes the weights,
+* `client.py`: a client that pulls the weights from the server, does something with them, and sends back training data.
+
+3. The `config` directory includes example configuration files for both the server and the client.

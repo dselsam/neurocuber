@@ -42,8 +42,8 @@ class NeuroQuery:
         self.assign_ops          = [ tvar.assign(self.assign_placeholders[tvar.name]) for tvar in tvars ]
 
     def query(self, n_vars, n_clauses, LC_idxs):
-        logits, v = self.sess.run([self.neurosat.logits, self.neurosat.v], feed_dict={ self.n_vars:n_vars, self.n_clauses:n_clauses, self.LC_idxs:LC_idxs })
-        return {"logits":logits, "v":v}
+        logits, sl_esteps = self.sess.run([self.neurosat.logits, self.neurosat.sl_esteps], feed_dict={ self.n_vars:n_vars, self.n_clauses:n_clauses, self.LC_idxs:LC_idxs })
+        return {"logits":logits, "sl_esteps":sl_esteps}
 
     def restore(self, restore_path):
         saver = tf.train.Saver()

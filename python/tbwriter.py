@@ -15,7 +15,7 @@
 import sqlite3
 import subprocess
 import math
-from client import ActorEpisodeResult
+from actor import ActorEpisodeResult
 import os
 import tensorflow as tf
 import numpy as np
@@ -43,7 +43,7 @@ class TensorBoardWriter:
         self.actor_iterations[(aer.cuber, aer.brancher)] += 1
 
         self.writers[aer.cuber].add_summary(
-            tf.Summary(value=[tf.Summary.Value(tag="estimate/vs_%s" % aer.brancher, simple_value=aer.estimate)]),
+            tf.Summary(value=[tf.Summary.Value(tag="esteps/vs_%s" % aer.brancher, simple_value=aer.esteps)]),
             global_step=self.actor_iterations[(aer.cuber, aer.brancher)]
         )
 

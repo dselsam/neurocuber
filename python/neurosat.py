@@ -20,7 +20,7 @@ from mlp import MLP
 from tfutil import repeat_end, decode_transfer_fn, mean_batch_norm
 from collections import namedtuple
 
-NeuroSATDatapoint = namedtuple('NeuroSATDatapoint',  ['n_vars', 'n_clauses', 'LC_idxs', 'target_var', 'target_v'])
+NeuroSATDatapoint = namedtuple('NeuroSATDatapoint',  ['n_vars', 'n_clauses', 'LC_idxs', 'target_var', 'target_sl_esteps'])
 
 class NeuroSATParameters:
     def __init__(self, cfg):
@@ -71,6 +71,6 @@ class NeuroSAT(object):
 
         scores = params.L_score.forward(tf.concat([L[0:n_vars, :], L[n_vars:, :]], axis=1))
 
-        self.logits   = scores[:, 0]
-        self.v_scores = scores[:, 1]
-        self.v        = tf.reduce_mean(self.v_scores, axis=0)
+        self.logits           = scores[:, 0]
+        self.sl_esteps_scores = scores[:, 1]
+        self.sl_esteps        = tf.reduce_mean(self.sl_esteps_scores, axis=0)

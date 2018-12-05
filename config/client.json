@@ -5,29 +5,24 @@
 
     "actors"     : [
 	{
+	    "kind":"lookahead",
 	    "n" : 1,
-	    "train" : true,
+	    "n_lookahead" : 2,
+	    "dirichlet" : { "ascale" : 10.0, "epsilon" : 0.25 },
+	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
+	    "solver" : { "max_conflicts":500, "sat_restart_max":10 }
+	},
+	{
+	    "kind":"asat",
+	    "n" : 1,
 	    "cubers" : [
 		{"name" : "march_cu", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
 	    ],
 	    "branchers" : [
-		{"name" : "random", "kind" : "random"}
+		{"name" : "neuro-is", "kind" : "neuro-is"}
 	    ],
-	    "dimacs_dir"   : "/home/dselsam/alphacuber/dimacs/marijn/",
-	    "solver" : { "max_conflicts":1000, "sat_restart_max":100 }
-	},
-
-	{
-	    "n" : 1,
-	    "train" : false,
-	    "cubers" : [
-		{"name" : "neuro4", "kind" : "neuro", "tau": 4.0}
-	    ],
-	    "branchers" : [
-		{"name" : "random", "kind" : "random"}
-	    ],
-	    "dimacs_dir"   : "/home/dselsam/alphacuber/dimacs/marijn/",
-	    "solver" : { "max_conflicts":1000, "sat_restart_max":100 }
+	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
+	    "solver" : { "max_conflicts":500, "sat_restart_max":10 }
 	}
 
     ]

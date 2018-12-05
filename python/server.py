@@ -21,7 +21,7 @@ import math
 import os
 import time
 from learner import Learner
-from client import ActorEpisodeResult
+from actor import ActorEpisodeResult
 import queue
 from util import set_pyro_config
 from tbwriter import TensorBoardWriter

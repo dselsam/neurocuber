@@ -18,6 +18,10 @@ def npsoftmax(x, axis=None):
     e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return e_x / np.sum(e_x, axis=axis, keepdims=True)
 
+def compute_top_k(arr, k):
+    assert(k <= np.size(arr))
+    return arr.argsort()[-k:][::-1]
+
 def set_pyro_config():
     import Pyro4
     Pyro4.config.SERVERTYPE            = "multiplex"

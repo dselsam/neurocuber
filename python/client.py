@@ -18,81 +18,12 @@ import os
 import math
 import random
 import time
+import util
 from neurosat import NeuroSATDatapoint
 from neuroquery import NeuroQuery
 from sat_util import *
-from asat import play_asat, mk_cuber, mk_brancher
 from collections import namedtuple
-
-ActorEpisodeResult = namedtuple('ActorEpisodeResult', ['dimacs', 'cuber', 'brancher', 'estimate', 'datapoints'])
-
-class Actor:
-    def __init__(self, server, gpu_id, gpu_frac, actor_info):
-        self.server     = server
-        self.cfg        = server.get_config()
-        self.cfg['dropout_training'] = False
-        self.neuroquery = NeuroQuery(self.cfg, gpu_id, gpu_frac)
-
-        self.cubers     = [mk_cuber(cuber_info, self.neuroquery) for cuber_info in actor_info['cubers']]
-        self.branchers  = [mk_brancher(brancher_info, self.neuroquery) for brancher_info in actor_info['branchers']]
-        # TODO(dselsam): if we end up training or testing on a large number of SAT problems, will need to
-        # parse the files lazily
-
-        self.sps = []
-        for root, subdirs, files in os.walk(actor_info['dimacs_dir']):
-            for dimacs in files:
-                self.sps.append((dimacs, parse_dimacs(os.path.join(root, dimacs))))
-
-        self.train      = actor_info['train']
-        self.z3opts     = Z3Options(max_conflicts=actor_info['solver']['max_conflicts'],
-                                    sat_restart_max=actor_info['solver']['sat_restart_max'])
-
-    def loop(self):
-        while True:
-            (dimacs, sp) = random.choice(self.sps)
-            cuber        = random.choice(self.cubers)
-            brancher     = random.choice(self.branchers)
-            self.play_episode(dimacs, sp, cuber, brancher)
-
-    def play_episode(self, dimacs, sp, cuber, brancher):
-        self.neuroquery.set_weights(self.server.get_weights())
-        ssat_result = play_asat(self._fresh_solver(sp), cuber, brancher)
-        if ssat_result is None: return None
-
-        trail, core, estimate = ssat_result
-
-        datapoints = []
-        if self.train:
-            min_trail   = [lit for lit in trail if lit in core]
-            s           = self._fresh_solver(sp)
-            for i in range(len(min_trail)):
-                tfq         = s.to_tf_query(assumptions=min_trail[:i])
-                if len(tfq.fvars) == 0: break
-                target_var  = min_trail[i].var().idx()
-                target_v    = self._compute_v(n_steps_left=len(min_trail) - i)
-                datapoints.append(NeuroSATDatapoint(n_vars=sp.n_vars(),
-                                                    n_clauses=sp.n_clauses(),
-                                                    LC_idxs=tfq.LC_idxs,
-                                                    target_var=target_var,
-                                                    target_v=target_v))
-
-        self.server.process_actor_episode(
-            tuple(
-                ActorEpisodeResult(
-                    dimacs=dimacs,
-                    cuber=cuber.name,
-                    brancher=brancher.name,
-                    estimate=estimate,
-                    datapoints=datapoints)
-            )
-        )
-
-    def _fresh_solver(self, sp):
-        return Z3Solver(sp=sp, opts=self.z3opts)
-
-    def _compute_v(self, n_steps_left):
-        steps = n_steps_left / self.cfg['v_reward_decay_steps']
-        return - self.cfg['v_reward_scale'] * (math.pow(self.cfg['v_reward_base'], steps) - 1)
+from actor import mk_actor, mk_cuber, mk_brancher
 
 if __name__ == "__main__":
     import argparse
@@ -136,7 +67,7 @@ if __name__ == "__main__":
     def launch_actor(actor_idx):
         server = construct_proxy_server()
         gpu_id = actor_idx % client_cfg['n_gpus'] if client_cfg['n_gpus'] > 0 else 0
-        actor  = Actor(server, gpu_id, gpu_frac, get_actor_info(actor_idx))
+        actor  = mk_actor(server, gpu_id, gpu_frac, get_actor_info(actor_idx))
         actor.loop()
 
     import multiprocessing

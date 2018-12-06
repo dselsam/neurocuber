@@ -76,7 +76,7 @@ class Actor:
                                                 target_var=pre_datapoint[1],
                                                 target_sl_esteps=esteps_to_sl_esteps(self.cfg, esteps)))
 
-        return datapoints, esteps
+        return (datapoints if self.actor_info['train'] else []), esteps
 
     def play_episode(self, dimacs, sp):
         raise Exception("Abstract method")

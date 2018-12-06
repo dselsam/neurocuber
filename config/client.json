@@ -18,6 +18,8 @@
 	    "try_march_cu": true,
 	    "consider_march_cu": true,
 
+	    "train":true,
+
 	    "dirichlet" : { "ascale" : 10.0, "epsilon" : 0.25 },
 	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
 	    "solver" : { "max_conflicts":100, "sat_restart_max":5, "lookahead_delta_fraction":0.0 }
@@ -31,6 +33,7 @@
 	    "branchers" : [
 		{"name" : "random", "kind" : "random"}
 	    ],
+	    "train" : false,
 	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
 	    "solver" : { "max_conflicts":100, "sat_restart_max":5, "lookahead_delta_fraction":0.0 }
 	},
@@ -44,6 +47,7 @@
 	    "branchers" : [
 		{"name" : "random", "kind" : "random"}
 	    ],
+	    "train" : false,
 	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
 	    "solver" : { "max_conflicts":100, "sat_restart_max":5, "lookahead_delta_fraction":1.0 }
 	}

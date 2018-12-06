@@ -78,6 +78,14 @@ Lit Z3Solver::zlit_to_lit(z3::expr const & zlit) const {
   return Lit(var, sign);
 }
 
+void Z3Solver::push() {
+  _zsolver.push();
+}
+
+void Z3Solver::pop() {
+  _zsolver.pop();
+}
+
 z3::solver Z3Solver::zclone_and_set(vector<Lit> const & assumptions) {
   z3::solver s = ztranslate(_zsolver);
   set_zsolver_params(s);
@@ -282,6 +290,8 @@ void init_py_solver_module(py::module & m) {
   py::class_<Z3Solver>(m, "Z3Solver")
     .def(py::init<SATProblem const &, Z3Options const &>(), py::arg("sp"), py::arg("opts"))
     .def("sp", &Z3Solver::sp)
+    .def("push", &Z3Solver::push)
+    .def("pop", &Z3Solver::pop)
     .def("add", &Z3Solver::add, py::arg("lits"))
     .def("check", &Z3Solver::check, py::arg("assumptions"), py::call_guard<py::gil_scoped_release>())
     .def("unsat_core", &Z3Solver::unsat_core)

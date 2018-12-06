@@ -62,6 +62,9 @@ class Z3Solver {
  public:
   Z3Solver(SATProblem const & sp, Z3Options const & opts);
 
+  void push();
+  void pop();
+
   SATProblem const & sp() const;
   z3::solver zclone_and_set(vector<Lit> const & assumptions);
   pair<Z3Status, vector<Lit>> cube(vector<Lit> const & assumptions, string const & lookahead_reward);

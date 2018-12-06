@@ -78,3 +78,14 @@ def test_unsat_core():
     assert_equals(len(core), 2)
     assert_true(Lit(Var(0), False) in core)
     assert_true(Lit(Var(1), False) in core)
+
+def test_scopes():
+    sp = parse_dimacs(os.path.join(TEST_DIR, "test1.dimacs"))
+    s = Z3Solver(sp, opts(max_conflicts=0))
+    assert_equals(s.check([]), Z3Status.unknown)
+    s.push()
+    s.add([Lit(Var(0), False), Lit(Var(4), True), Lit(Var(1), False)])
+    assert_equals(s.check([]), Z3Status.unsat)
+    assert_equals(s.check([]), Z3Status.unsat)
+    s.pop()
+    assert_equals(s.check([]), Z3Status.unknown)

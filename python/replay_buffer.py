@@ -36,6 +36,10 @@ class ReplayBuffer:
             self._increment_index()
 
     def sample_datapoints(self, n_samples):
+        if (not self.eviction_started) and self.next_index < self.cfg['replay_buffer_min_size']:
+            # to prevent overfitting the first run that happens to get added
+            return []
+
         n_to_consider = len(self.storage) if self.eviction_started else self.next_index
         if n_to_consider >= n_samples:
             return random.sample(self.storage[:n_to_consider], k=n_samples)

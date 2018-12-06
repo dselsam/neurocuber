@@ -37,18 +37,12 @@
     "d_lit": 8,
 
     "LC_scale": 0.50,
-    "CL_scale": 0.05,
+    "CL_scale": 0.10,
 
     "mlp_transfer_fn": "relu",
     "mlp_update_nl_at_end":false,
 
-    "v_reward_base":1.2,
-    "v_reward_decay_steps":2,
-    "v_reward_scale":0.2,
-
     "log_esteps_scale":0.2,
-
-    "summarize_vectors":false,
 
     "restore_path":"none"
 }

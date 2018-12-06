@@ -41,7 +41,7 @@ class Actor:
         self.server     = server
         self.cfg        = server.get_config()
         self.cfg['dropout_training'] = False
-        self.neuroquery = NeuroQuery(self.cfg, gpu_id, gpu_frac)
+        self.neuroquery = NeuroQuery(self.cfg, gpu_id, gpu_frac) if actor_info['tf'] else None
 
         self.cubers     = [mk_cuber(cuber_info, self.neuroquery) for cuber_info in actor_info['cubers']] if 'cubers' in actor_info else []
         self.branchers  = [mk_brancher(self.cfg, brancher_info, self.neuroquery) for brancher_info in actor_info['branchers']] if 'branchers' in actor_info else []
@@ -53,9 +53,13 @@ class Actor:
             for dimacs in files:
                 self.sps.append((dimacs, parse_dimacs(os.path.join(root, dimacs))))
 
+    def pull_weights(self):
+        if self.neuroquery is not None:
+            self.neuroquery.set_weights(self.server.get_weights())
+
     def loop(self):
         while True:
-            self.neuroquery.set_weights(self.server.get_weights())
+            self.pull_weights()
             (dimacs, sp) = random.choice(self.sps)
             result = self.play_episode(dimacs, sp)
             if result is None: continue
@@ -124,7 +128,7 @@ class LookaheadActor(Actor):
             pfvar_esteps = np.zeros(shape=(n_lookahead, 2))
 
             if self.actor_info['pull_every_step']:
-                self.neuroquery.set_weights(self.server.get_weights())
+                self.pull_weights()
 
             for pfvar_idx in range(n_lookahead):
                 var = Var(tfq.fvars[pfvars[pfvar_idx]])

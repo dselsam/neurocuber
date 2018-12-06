@@ -8,6 +8,7 @@
 	    "kind":"lookahead",
 	    "n" : 0,
 	    "n_lookahead" : 2,
+	    "tf": true,
 
 	    "pull_every_step": true,
 
@@ -27,8 +28,9 @@
 	{
 	    "kind":"asat",
 	    "n" : 1,
+	    "tf" : false,
 	    "cubers" : [
-		{"name" : "march_cu_0", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
+		{"name" : "march0", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
 	    ],
 	    "branchers" : [
 		{"name" : "random", "kind" : "random"}
@@ -41,8 +43,9 @@
 	{
 	    "kind":"asat",
 	    "n" : 1,
+	    "tf" : false,
 	    "cubers" : [
-		{"name" : "march_cu_1", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
+		{"name" : "march1", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
 	    ],
 	    "branchers" : [
 		{"name" : "random", "kind" : "random"}

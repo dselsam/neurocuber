@@ -242,7 +242,7 @@ class NeuroCuber:
             return None
         else:
             fvar_logits = self.neuroquery.query(s.sp().n_vars(), s.sp().n_clauses(), tfq.LC_idxs)['logits'][tfq.fvars]
-            fvar_ps     = npsoftmax(fvar_logits * self.tau)
+            fvar_ps     = util.npsoftmax(fvar_logits * self.tau)
             fvar_choice = np.random.choice(np.size(fvar_ps), 1, p=fvar_ps)[0]
             return Var(tfq.fvars[fvar_choice])
 

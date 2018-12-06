@@ -20,7 +20,7 @@ import os
 TEST_DIR = "/home/dselsam/alphacuber/tests"
 
 def opts(max_conflicts):
-    return Z3Options(max_conflicts=max_conflicts, sat_restart_max=0)
+    return Z3Options(max_conflicts=max_conflicts, sat_restart_max=0, lookahead_delta_fraction=0.1)
 
 def test_Z3Solver_basics():
     sp = parse_dimacs(os.path.join(TEST_DIR, "test1.dimacs"))

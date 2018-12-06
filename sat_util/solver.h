@@ -31,8 +31,9 @@ enum class Z3Status { UNKNOWN, UNSAT, SAT };
 struct Z3Options {
   unsigned max_conflicts;
   unsigned sat_restart_max;
+  float    lookahead_delta_fraction;
 
-  Z3Options(unsigned max_conflicts, unsigned sat_restart_max);
+  Z3Options(unsigned max_conflicts, unsigned sat_restart_max, float lookahead_delta_fraction);
 };
 
 struct TFQuery {

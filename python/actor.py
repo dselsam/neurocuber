@@ -32,6 +32,10 @@ def sl_esteps_to_esteps(cfg, sl_esteps):
 def esteps_to_sl_esteps(cfg, esteps):
     return np.log2(esteps) * cfg['log_esteps_scale']
 
+def mk_zopts(actor_info):
+    return Z3Options(max_conflicts=actor_info['solver']['max_conflicts'],
+                     sat_restart_max=actor_info['solver']['sat_restart_max'],
+                     lookahead_delta_fraction=actor_info['solver']['lookahead_delta_fraction'])
 class Actor:
     def __init__(self, server, gpu_id, gpu_frac, actor_info):
         self.server     = server
@@ -48,9 +52,6 @@ class Actor:
         for root, subdirs, files in os.walk(actor_info['dimacs_dir']):
             for dimacs in files:
                 self.sps.append((dimacs, parse_dimacs(os.path.join(root, dimacs))))
-
-        self.z3opts     = Z3Options(max_conflicts=actor_info['solver']['max_conflicts'],
-                                    sat_restart_max=actor_info['solver']['sat_restart_max'])
 
     def loop(self):
         while True:
@@ -85,52 +86,69 @@ class LookaheadActor(Actor):
         pre_datapoints = []
         ps = []
 
-        s    = Z3Solver(sp=sp, opts=self.z3opts)
+        s    = Z3Solver(sp=sp, opts=mk_zopts(self.actor_info))
         tfq  = s.to_tf_query(assumptions=[])
         assert(tfq.fvars)
         tfqr = self.neuroquery.query(sp.n_vars(), sp.n_clauses(), tfq.LC_idxs)
 
         while True:
-            if tfq is None:
-                break
+            if tfq is None: break
+            assert(tfq is not None)
+            assert(tfqr is not None)
+
             status = s.check(assumptions=[])
-            if status != Z3Status.unknown:
-                break
-            else:
-                assert(tfq is not None)
-                assert(tfqr is not None)
+            if status != Z3Status.unknown: break
 
-            ok_logits           = tfqr['logits'][tfq.fvars]
-            ok_ps               = util.npsoftmax(ok_logits)
+            if self.actor_info['try_march_cu']:
+                status, zlits = s.cube(assumptions=[], lookahead_reward="march_cu")
+                if status != Z3Status.unknown: break
 
-            DIR_EPS, DIR_ASCALE = self.actor_info['dirichlet']['epsilon'], self.actor_info['dirichlet']['ascale']
-            ok_ps               = DIR_EPS * np.random.dirichlet((DIR_ASCALE / np.size(ok_ps)) * np.ones_like(ok_ps)) + (1 - DIR_EPS) * ok_ps
+            fvar_logits           = tfqr['logits'][tfq.fvars]
+            fvar_ps               = util.npsoftmax(fvar_logits)
 
-            n_lookahead         = min(self.actor_info['n_lookahead'], np.size(ok_ps))
+            DIR_EPS, DIR_ASCALE   = self.actor_info['dirichlet']['epsilon'], self.actor_info['dirichlet']['ascale']
+            fvar_ps               = DIR_EPS * np.random.dirichlet((DIR_ASCALE / np.size(fvar_ps)) * np.ones_like(fvar_ps)) + (1 - DIR_EPS) * fvar_ps
 
-            promising_ok_vars   = util.compute_top_k(ok_ps, n_lookahead)
+            n_lookahead           = min(self.actor_info['n_lookahead'], np.size(fvar_ps))
 
-            promising_ok_tfqs   = [[None, None] for _ in range(n_lookahead)]
-            promising_ok_tfqrs  = [[None, None] for _ in range(n_lookahead)]
-            promising_ok_esteps = np.zeros(shape=(n_lookahead, 2))
+            # 'promising' free vars
+            pfvars                = util.compute_top_k(fvar_ps, n_lookahead)
 
-            for pvar_idx in range(n_lookahead):
-                pvar = promising_ok_vars[pvar_idx]
+            if self.actor_info['consider_march_cu']:
+                zvar_box    = np.array([zlits[0].var().idx()])
+                pfvars      = np.union1d(pfvars, zvar_box)
+                n_lookahead = np.size(pfvars)
+
+            pfvar_tfqs   = [[None, None] for _ in range(n_lookahead)]
+            pfvar_tfqrs  = [[None, None] for _ in range(n_lookahead)]
+            pfvar_esteps = np.zeros(shape=(n_lookahead, 2))
+
+            if self.actor_info['pull_every_step']:
+                self.neuroquery.set_weights(self.server.get_weights())
+
+            for pfvar_idx in range(n_lookahead):
+                var = Var(tfq.fvars[pfvars[pfvar_idx]])
                 for b_idx, b in enumerate([False, True]):
-                    tfq_b = s.to_tf_query(assumptions=[Lit(Var(tfq.fvars[pvar]), b)])
+                    tfq_b = s.to_tf_query(assumptions=[Lit(var, b)])
                     if tfq_b.fvars:
-                        promising_ok_tfqs[pvar_idx][b_idx]   = tfq_b
-                        promising_ok_tfqrs[pvar_idx][b_idx]  = self.neuroquery.query(sp.n_vars(), sp.n_clauses(), tfq_b.LC_idxs)
-                        promising_ok_esteps[pvar_idx][b_idx] = sl_esteps_to_esteps(self.cfg, promising_ok_tfqrs[pvar_idx][b_idx]['sl_esteps'])
+                        pfvar_tfqs[pfvar_idx][b_idx]   = tfq_b
+                        pfvar_tfqrs[pfvar_idx][b_idx]  = self.neuroquery.query(sp.n_vars(), sp.n_clauses(), tfq_b.LC_idxs)
+                        pfvar_esteps[pfvar_idx][b_idx] = sl_esteps_to_esteps(self.cfg, pfvar_tfqrs[pfvar_idx][b_idx]['sl_esteps'])
                     else:
-                        promising_ok_esteps[pvar_idx][b_idx] = 1.0
+                        pfvar_esteps[pfvar_idx][b_idx] = 1.0
 
-            promising_ok_qs       = np.sum(promising_ok_esteps, axis=1)
-            best_promising_ok_var = np.argmin(promising_ok_qs, axis=0)
-            best_var              = tfq.fvars[promising_ok_vars[best_promising_ok_var]]
+            # TODO(dselsam): there is probably a more principled way to do this
+            pfvar_prior_ps         = util.npsoftmax(fvar_logits[pfvars] * self.actor_info['prior_tau'])
+            pfvar_posterior_ps     = util.npsoftmax(- esteps_to_sl_esteps(self.cfg, np.sum(pfvar_esteps, axis=1)) * self.actor_info['posterior_tau'])
+
+            pfvar_ps               = self.actor_info['prior_weight'] * pfvar_prior_ps + (1 - self.actor_info['prior_weight']) * pfvar_posterior_ps
+            pfvar_ps               = pfvar_ps / np.sum(pfvar_ps) # not exactly 1 due to numerical issues
+
+            best_pfvar_var         = np.random.choice(np.size(pfvar_ps), 1, p=pfvar_ps)[0]
+            best_var               = tfq.fvars[pfvars[best_pfvar_var]]
 
             # importance sample
-            is_ps     = promising_ok_esteps[best_promising_ok_var, :]
+            is_ps     = pfvar_esteps[best_pfvar_var, :]
             is_ps     = is_ps / np.sum(is_ps)
             is_branch = np.random.choice(np.size(is_ps), 1, p=is_ps)[0]
 
@@ -141,8 +159,8 @@ class LookaheadActor(Actor):
             # advance the solver and reuse the query results
             lit = Lit(Var(best_var), is_branch)
             s.add(lits=[lit])
-            tfq  = promising_ok_tfqs[best_promising_ok_var][is_branch]
-            tfqr = promising_ok_tfqrs[best_promising_ok_var][is_branch]
+            tfq  = pfvar_tfqs[best_pfvar_var][is_branch]
+            tfqr = pfvar_tfqrs[best_pfvar_var][is_branch]
 
         return pre_datapoints, ps, "neuro-look-%d" % self.actor_info['n_lookahead'], "neuro-is"
 
@@ -151,7 +169,7 @@ class AsatActor(Actor):
         cuber    = random.choice(self.cubers)
         brancher = random.choice(self.branchers)
 
-        s        = Z3Solver(sp=sp, opts=self.z3opts)
+        s        = Z3Solver(sp=sp, opts=mk_zopts(self.actor_info))
 
         pre_datapoints = []
         ps             = []
@@ -219,10 +237,10 @@ class NeuroCuber:
         if len(tfq.fvars) == 0:
             return None
         else:
-            ok_logits = self.neuroquery.query(s.sp().n_vars(), s.sp().n_clauses(), tfq.LC_idxs)['logits'][tfq.fvars]
-            ok_ps     = npsoftmax(ok_logits * self.tau)
-            ok_choice = np.random.choice(np.size(ok_ps), 1, p=ok_ps)[0]
-            return Var(tfq.fvars[ok_choice])
+            fvar_logits = self.neuroquery.query(s.sp().n_vars(), s.sp().n_clauses(), tfq.LC_idxs)['logits'][tfq.fvars]
+            fvar_ps     = npsoftmax(fvar_logits * self.tau)
+            fvar_choice = np.random.choice(np.size(fvar_ps), 1, p=fvar_ps)[0]
+            return Var(tfq.fvars[fvar_choice])
 
 ## Branchers
 

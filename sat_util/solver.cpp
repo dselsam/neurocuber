@@ -47,8 +47,8 @@ static z3::solver ztranslate(z3::solver & s0) {
 }
 
 // Z3Options
-Z3Options::Z3Options(unsigned max_conflicts, unsigned sat_restart_max):
-  max_conflicts(max_conflicts), sat_restart_max(sat_restart_max) {}
+Z3Options::Z3Options(unsigned max_conflicts, unsigned sat_restart_max, float lookahead_delta_fraction):
+  max_conflicts(max_conflicts), sat_restart_max(sat_restart_max), lookahead_delta_fraction(lookahead_delta_fraction) {}
 
 // Z3Solver
 
@@ -151,6 +151,7 @@ void Z3Solver::set_zsolver_params(z3::solver & s) {
 
   s.set(":max_conflicts", _opts.max_conflicts);
   s.set(":sat.restart.max", _opts.sat_restart_max);
+  s.set(":lookahead.delta_fraction", _opts.lookahead_delta_fraction);
 }
 
 void Z3Solver::print() const {
@@ -264,7 +265,10 @@ Z3Solver::Z3Solver(SATProblem const & sp, Z3Options const & opts):
 
 void init_py_solver_module(py::module & m) {
   py::class_<Z3Options>(m, "Z3Options")
-    .def(py::init<unsigned, unsigned>(), py::arg("max_conflicts"), py::arg("sat_restart_max"));
+    .def(py::init<unsigned, unsigned, float>(),
+	 py::arg("max_conflicts"),
+	 py::arg("sat_restart_max"),
+	 py::arg("lookahead_delta_fraction"));
 
   py::enum_<Z3Status>(m, "Z3Status")
     .value("unknown", Z3Status::UNKNOWN)

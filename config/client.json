@@ -6,24 +6,48 @@
     "actors"     : [
 	{
 	    "kind":"lookahead",
-	    "n" : 1,
+	    "n" : 0,
 	    "n_lookahead" : 2,
+
+	    "pull_every_step": true,
+
+	    "prior_tau" : 2.0,
+	    "posterior_tau" : 2.0,
+	    "prior_weight" : 0.3,
+
+	    "try_march_cu": true,
+	    "consider_march_cu": true,
+
 	    "dirichlet" : { "ascale" : 10.0, "epsilon" : 0.25 },
 	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
-	    "solver" : { "max_conflicts":500, "sat_restart_max":10 }
+	    "solver" : { "max_conflicts":100, "sat_restart_max":5, "lookahead_delta_fraction":0.0 }
 	},
 	{
 	    "kind":"asat",
 	    "n" : 1,
 	    "cubers" : [
-		{"name" : "march_cu", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
+		{"name" : "march_cu_0", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
 	    ],
 	    "branchers" : [
-		{"name" : "neuro-is", "kind" : "neuro-is"}
+		{"name" : "random", "kind" : "random"}
 	    ],
 	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
-	    "solver" : { "max_conflicts":500, "sat_restart_max":10 }
+	    "solver" : { "max_conflicts":100, "sat_restart_max":5, "lookahead_delta_fraction":0.0 }
+	},
+
+	{
+	    "kind":"asat",
+	    "n" : 1,
+	    "cubers" : [
+		{"name" : "march_cu_1", "kind" : "z3", "lookahead_rewards": ["march_cu"]}
+	    ],
+	    "branchers" : [
+		{"name" : "random", "kind" : "random"}
+	    ],
+	    "dimacs_dir"  : "/home/dselsam/alphacuber/dimacs/schur/",
+	    "solver" : { "max_conflicts":100, "sat_restart_max":5, "lookahead_delta_fraction":1.0 }
 	}
+
 
     ]
 }

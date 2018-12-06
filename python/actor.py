@@ -192,6 +192,11 @@ class AsatActor(Actor):
                 break
             assert(tfq.fvars)
 
+            if self.actor_info['try_march_cu']:
+                # make sure to set this it to false when assessing march_cu to avoid extra work
+                status, zlits = s.cube(assumptions=[], lookahead_reward="march_cu")
+                if status != Z3Status.unknown: break
+
             var = cuber.cube(s, assumptions=[])
             if var is None:
                 print("[%s] CUBER SOLVED PROBLEM" % cuber.name)

@@ -20,23 +20,25 @@ import os
 TEST_DIR = "/home/dselsam/alphacuber/tests"
 
 def opts(max_conflicts):
-    return Z3Options(max_conflicts=max_conflicts, sat_restart_max=0, lookahead_delta_fraction=0.1)
+    return Z3Options(max_conflicts=max_conflicts, sat_restart_max=0)
 
 def test_Z3Solver_basics():
     sp = parse_dimacs(os.path.join(TEST_DIR, "test1.dimacs"))
 
     s = Z3Solver(sp, opts(max_conflicts=0))
-    assert_equals(s.check([]), Z3Status.unknown)
+    assert_equals(s.check(), Z3Status.unknown)
+    assert_equals(s.propagate(), Z3Status.unknown)
 
-    s = Z3Solver(sp, opts(max_conflicts=10))
-    assert_equals(s.check([]), Z3Status.sat)
+    s = Z3Solver(sp, opts(max_conflicts=100))
+    assert_equals(s.check(), Z3Status.sat)
 
 def check_to_tf_query(dimacs, expected):
     sp = parse_dimacs(dimacs)
     s = Z3Solver(sp, opts(max_conflicts=0))
-    assert_equals(s.check([]), Z3Status.unknown)
+    assert_equals(s.check(), Z3Status.unknown)
 
-    tfq = s.to_tf_query(expected['trail'])
+    s.add(expected['trail'])
+    tfq = s.to_tf_query()
 
     assert_equals(tfq.fvars, expected['fvars'])
     assert_true((tfq.LC_idxs == expected['LC_idxs']).all())
@@ -72,8 +74,8 @@ def test_to_tf_query():
 def test_unsat_core():
     sp = parse_dimacs(os.path.join(TEST_DIR, "test1.dimacs"))
     s = Z3Solver(sp, opts(max_conflicts=0))
-    assert_equals(s.check([Lit(Var(0), False), Lit(Var(4), True), Lit(Var(1), False)]), Z3Status.unsat)
-    core = s.unsat_core()
+    status, core = s.check_core([Lit(Var(0), False), Lit(Var(4), True), Lit(Var(1), False)])
+    assert_equals(status, Z3Status.unsat)
     # TODO(dselsam): support < on lits
     assert_equals(len(core), 2)
     assert_true(Lit(Var(0), False) in core)
@@ -82,10 +84,10 @@ def test_unsat_core():
 def test_scopes():
     sp = parse_dimacs(os.path.join(TEST_DIR, "test1.dimacs"))
     s = Z3Solver(sp, opts(max_conflicts=0))
-    assert_equals(s.check([]), Z3Status.unknown)
+    assert_equals(s.check(), Z3Status.unknown)
     s.push()
     s.add([Lit(Var(0), False), Lit(Var(4), True), Lit(Var(1), False)])
-    assert_equals(s.check([]), Z3Status.unsat)
-    assert_equals(s.check([]), Z3Status.unsat)
+    assert_equals(s.check(), Z3Status.unsat)
+    assert_equals(s.check(), Z3Status.unsat)
     s.pop()
-    assert_equals(s.check([]), Z3Status.unknown)
+    assert_equals(s.check(), Z3Status.unknown)

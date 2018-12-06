@@ -35,22 +35,18 @@ static Z3Status check_result_to_Z3Status(z3::check_result const & cr) {
   throw SatUtilException("check_result_to_Z3Status: unexpected status from z3");
 }
 
-static Z3Status zpropagate(Z3Options const & opts, z3::solver & s) {
-  s.set(":max_conflicts", (unsigned) 0);
-  z3::check_result cr = s.check();
-  s.set(":max_conflicts", opts.max_conflicts);
-  return check_result_to_Z3Status(cr);
-}
-
-static z3::solver ztranslate(z3::solver & s0) {
-  return z3::solver(s0.ctx(), s0, z3::solver::translate());
-}
-
 // Z3Options
-Z3Options::Z3Options(unsigned max_conflicts, unsigned sat_restart_max, float lookahead_delta_fraction):
-  max_conflicts(max_conflicts), sat_restart_max(sat_restart_max), lookahead_delta_fraction(lookahead_delta_fraction) {}
+Z3Options::Z3Options(unsigned max_conflicts, unsigned sat_restart_max):
+  max_conflicts(max_conflicts), sat_restart_max(sat_restart_max) {}
 
 // Z3Solver
+
+Z3Status Z3Solver::propagate() {
+  _zsolver.set(":max_conflicts", (unsigned) 0);
+  z3::check_result cr = _zsolver.check();
+  _zsolver.set(":max_conflicts", _opts.max_conflicts);
+  return check_result_to_Z3Status(cr);
+}
 
 z3::expr Z3Solver::var_to_zvar(Var const & var) const {
   if (var.idx() >= _var_to_zvar.size()) {
@@ -86,20 +82,8 @@ void Z3Solver::pop() {
   _zsolver.pop();
 }
 
-z3::solver Z3Solver::zclone_and_set(vector<Lit> const & assumptions) {
-  z3::solver s = ztranslate(_zsolver);
-  set_zsolver_params(s);
-  for (Lit const & lit : assumptions) {
-    s.add(lit_to_zlit(lit));
-  }
-  return s;
-}
-
-TFQuery Z3Solver::to_tf_query(vector<Lit> const & assumptions) {
-  z3::solver s = zclone_and_set(assumptions);
-  // we propagate here just in case
-  // note: result might not have free vars
-  zpropagate(_opts, s);
+TFQuery Z3Solver::to_tf_query() {
+  // note it is the caller's responsibility to propagate first
 
   // we don't know the number of cells yet
   vector<pair<unsigned, unsigned> > idxs;
@@ -108,7 +92,7 @@ TFQuery Z3Solver::to_tf_query(vector<Lit> const & assumptions) {
   // collect units
   bool units[_sp.n_lits()] = { false };
 
-  z3::expr_vector zunits = s.units();
+  z3::expr_vector zunits = _zsolver.units();
   for (unsigned u_idx = 0; u_idx < zunits.size(); ++u_idx) {
     units[zlit_to_lit(zunits[u_idx]).vidx(_sp.n_vars())] = true;
   }
@@ -141,7 +125,7 @@ TFQuery Z3Solver::to_tf_query(vector<Lit> const & assumptions) {
     tfq.LC_idxs(cell_idx, 1) = idxs[cell_idx].second;
   }
 
-  z3::expr_vector zfvars = s.non_units();
+  z3::expr_vector zfvars = _zsolver.non_units();
   for (unsigned fv_idx = 0; fv_idx < zfvars.size(); ++fv_idx) {
     tfq.fvars.push_back(zlit_to_lit(zfvars[fv_idx]).var().idx());
   }
@@ -149,17 +133,15 @@ TFQuery Z3Solver::to_tf_query(vector<Lit> const & assumptions) {
   return tfq;
 }
 
-void Z3Solver::set_zsolver_params(z3::solver & s) {
-  s.set(":lookahead.cube.cutoff", "depth");
-  s.set(":lookahead.cube.depth", (unsigned)1);
-  s.set(":unsat_core", true);
-  s.set(":core.minimize", true);
-  s.set(":core.minimize_partial", true);
-  // s.set(":sat.force_cleanup", true);
+void Z3Solver::set_params() {
+  _zsolver.set(":lookahead.cube.cutoff", "depth");
+  _zsolver.set(":lookahead.cube.depth", (unsigned)1);
+  _zsolver.set(":unsat_core", true);
+  _zsolver.set(":core.minimize", true);
+  _zsolver.set(":core.minimize_partial", true);
 
-  s.set(":max_conflicts", _opts.max_conflicts);
-  s.set(":sat.restart.max", _opts.sat_restart_max);
-  s.set(":lookahead.delta_fraction", _opts.lookahead_delta_fraction);
+  _zsolver.set(":max_conflicts", _opts.max_conflicts);
+  _zsolver.set(":sat.restart.max", _opts.sat_restart_max);
 }
 
 void Z3Solver::print() const {
@@ -191,11 +173,11 @@ void Z3Solver::add(vector<Lit> const & lits) {
   }
 }
 
-pair<Z3Status, vector<Lit>> Z3Solver::cube(vector<Lit> const & assumptions, string const & lookahead_reward) {
-  z3::solver s = zclone_and_set(assumptions);
-  s.set(":lookahead.reward", lookahead_reward.c_str());
+pair<Z3Status, vector<Lit>> Z3Solver::cube(string const & lookahead_reward, float lookahead_delta_fraction) {
+  _zsolver.set(":lookahead.reward", lookahead_reward.c_str());
+  _zsolver.set(":lookahead.delta_fraction", lookahead_delta_fraction);
 
-  z3::solver::cube_generator cg    = s.cubes();
+  z3::solver::cube_generator cg    = _zsolver.cubes();
   z3::solver::cube_iterator  start = cg.begin();
   z3::solver::cube_iterator  end   = cg.end();
 
@@ -224,30 +206,37 @@ pair<Z3Status, vector<Lit>> Z3Solver::cube(vector<Lit> const & assumptions, stri
   return { Z3Status::UNKNOWN, { zlit_to_lit(cube1[0]), zlit_to_lit(cube2[0]) } };
 }
 
-vector<Lit> Z3Solver::unsat_core() {
-  vector<Lit> core;
-  z3::expr_vector zcore = _zsolver.unsat_core();
-  for (unsigned i = 0; i < zcore.size(); ++i) {
-    core.push_back(zlit_to_lit(zcore[i]));
-  }
-  return core;
+Z3Status Z3Solver::check() {
+  return check_result_to_Z3Status(_zsolver.check());
 }
 
-Z3Status Z3Solver::check(vector<Lit> const & lits) {
+pair<Z3Status, vector<Lit>> Z3Solver::check_core(vector<Lit> const & lits) {
   vector<z3::expr> assumptions;
   for (Lit const & lit : lits) {
     assumptions.push_back(lit_to_zlit(lit));
   }
-  return check_result_to_Z3Status(_zsolver.check(assumptions.size(), assumptions.data()));
+  Z3Status status = check_result_to_Z3Status(_zsolver.check(assumptions.size(), assumptions.data()));
+  vector<Lit> core;
+  if (status == Z3Status::UNSAT) {
+    z3::expr_vector zcore = _zsolver.unsat_core();
+    for (unsigned i = 0; i < zcore.size(); ++i) {
+      core.push_back(zlit_to_lit(zcore[i]));
+    }
+  }
+  return { status, core };
 }
 
 SATProblem const & Z3Solver::sp() const {
   return _sp;
 }
 
+void Z3Solver::reset() {
+  return _zsolver.reset();
+}
+
 Z3Solver::Z3Solver(SATProblem const & sp, Z3Options const & opts):
   _sp(sp), _opts(opts), _zctx(), _zsolver(_zctx, "QF_FD")  {
-  set_zsolver_params(_zsolver);
+  set_params();
 
   // create zvars
   for (unsigned v_idx = 0; v_idx < _sp.n_vars(); ++v_idx) {
@@ -273,10 +262,9 @@ Z3Solver::Z3Solver(SATProblem const & sp, Z3Options const & opts):
 
 void init_py_solver_module(py::module & m) {
   py::class_<Z3Options>(m, "Z3Options")
-    .def(py::init<unsigned, unsigned, float>(),
+    .def(py::init<unsigned, unsigned>(),
 	 py::arg("max_conflicts"),
-	 py::arg("sat_restart_max"),
-	 py::arg("lookahead_delta_fraction"));
+	 py::arg("sat_restart_max"));
 
   py::enum_<Z3Status>(m, "Z3Status")
     .value("unknown", Z3Status::UNKNOWN)
@@ -292,10 +280,13 @@ void init_py_solver_module(py::module & m) {
     .def("sp", &Z3Solver::sp)
     .def("push", &Z3Solver::push)
     .def("pop", &Z3Solver::pop)
+    .def("reset", &Z3Solver::reset)
+    .def("propagate", &Z3Solver::propagate)
     .def("add", &Z3Solver::add, py::arg("lits"))
-    .def("check", &Z3Solver::check, py::arg("assumptions"), py::call_guard<py::gil_scoped_release>())
-    .def("unsat_core", &Z3Solver::unsat_core)
-    .def("to_tf_query", &Z3Solver::to_tf_query, py::arg("assumptions"), py::call_guard<py::gil_scoped_release>())
+    .def("check", &Z3Solver::check, py::call_guard<py::gil_scoped_release>())
+    .def("check_core", &Z3Solver::check_core, py::arg("assumptions"), py::call_guard<py::gil_scoped_release>())
+    .def("to_tf_query", &Z3Solver::to_tf_query, py::call_guard<py::gil_scoped_release>())
     .def("print", &Z3Solver::print)
-    .def("cube", &Z3Solver::cube, py::arg("assumptions"), py::arg("lookahead_reward"), py::call_guard<py::gil_scoped_release>());
+    .def("cube", &Z3Solver::cube, py::arg("lookahead_reward"), py::arg("lookahead_delta_fraction"),
+	 py::call_guard<py::gil_scoped_release>());
 }

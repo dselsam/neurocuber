@@ -31,9 +31,8 @@ enum class Z3Status { UNKNOWN, UNSAT, SAT };
 struct Z3Options {
   unsigned max_conflicts;
   unsigned sat_restart_max;
-  float    lookahead_delta_fraction;
 
-  Z3Options(unsigned max_conflicts, unsigned sat_restart_max, float lookahead_delta_fraction);
+  Z3Options(unsigned max_conflicts, unsigned sat_restart_max);
 };
 
 struct TFQuery {
@@ -56,7 +55,7 @@ class Z3Solver {
   Var zvar_to_var(z3::expr const & zvar) const;
   Lit zlit_to_lit(z3::expr const & zlit) const;
 
-  void set_zsolver_params(z3::solver & s);
+  void set_params();
   void validate_cube(z3::expr_vector const & cube);
 
  public:
@@ -64,14 +63,15 @@ class Z3Solver {
 
   void push();
   void pop();
+  void reset();
 
+  Z3Status propagate();
   SATProblem const & sp() const;
-  z3::solver zclone_and_set(vector<Lit> const & assumptions);
-  pair<Z3Status, vector<Lit>> cube(vector<Lit> const & assumptions, string const & lookahead_reward);
+  pair<Z3Status, vector<Lit>> cube(string const & lookahead_reward, float lookahead_delta_fraction);
   void add(vector<Lit> const & lits);
-  Z3Status check(vector<Lit> const & lits);
-  vector<Lit> unsat_core();
-  TFQuery to_tf_query(vector<Lit> const & assumptions);
+  Z3Status check();
+  pair<Z3Status, vector<Lit>> check_core(vector<Lit> const & assumptions);
+  TFQuery to_tf_query();
 
   void print() const;
 };
